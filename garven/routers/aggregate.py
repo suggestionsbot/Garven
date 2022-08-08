@@ -1,12 +1,13 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from garven.dependencies import get_auth_header
 from garven.schema import Statistic
 from main import manager
 from garven.core import Operand, Codes
 
 aggregate_router = APIRouter(
     prefix="/aggregate",
-    # dependencies=[Depends(get_auth_header)],
+    dependencies=[Depends(get_auth_header)],
     tags=["Aggregate"],
     responses={200: {"model": Statistic}},
 )
