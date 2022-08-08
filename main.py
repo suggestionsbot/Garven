@@ -42,7 +42,7 @@ app.include_router(routers.aggregate_router)
 
 
 @app.get("/", response_class=HTMLResponse, tags=["General"])
-async def get(request: Request):
+async def index(request: Request):
     return templates.TemplateResponse(
         "index.html", {"request": request, "nav_links": nav_links}
     )
