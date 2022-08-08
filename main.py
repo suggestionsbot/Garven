@@ -16,6 +16,8 @@ from garven.schema import Message
 
 nav_links: list[dict[Literal["name", "url"], str]] = [
     {"name": "Home", "url": "/"},
+    {"name": "Docs", "url": "/docs"},
+    {"name": "Redoc", "url": "/redoc"},
 ]
 
 app = FastAPI(
