@@ -1,9 +1,20 @@
+from __future__ import annotations
+
+import logging
+import os
+from typing import TYPE_CHECKING
+
 from fastapi import APIRouter, Depends
+from fastapi import Request
+from zonis import RequestFailed
 
 from garven.dependencies import get_auth_header
 from garven.schema import Statistic
-from main import manager
-from garven.core import Operand, Codes
+
+if TYPE_CHECKING:
+    from zonis.server import Server
+
+log = logging.getLogger(__name__)
 
 aggregate_router = APIRouter(
     prefix="/aggregate",
@@ -14,13 +25,20 @@ aggregate_router = APIRouter(
 
 
 @aggregate_router.get("/guilds/count", description="Fetch an up to date guild count.")
-async def guild_count():
-    total_guilds: int = 0
-    data: list[Operand] = await manager.broadcast(
-        Operand.request_guild_count(), expect_response=True
-    )
-    for cluster in data:
-        assert cluster.code == Codes.RESPONSE
-        total_guilds += int(cluster.text)
+async def guild_count(request: Request):
+    z: Server = request.app.zonis
+    statistic = Statistic(statistic=0)
+    data: dict[str, int] = await z.request_all("guild_count")
+    for item in data.values():
+        if isinstance(item, RequestFailed):
+            statistic.partial_response = True
+            log.error("/guilds/count WS threw '%s'", item.response_data)
+            continue
 
-    return Statistic(statistic=total_guilds)
+        statistic.statistic += item
+
+    if len(data.keys()) != int(os.environ.get("CLUSTER_COUNT", 6)):
+        statistic.partial_response = True
+        log.error("/guilds/count did not get a response from all 6 clusters")
+
+    return statistic

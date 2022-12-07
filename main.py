@@ -1,18 +1,21 @@
 import asyncio
+import json
 import logging
-import os
+from json import JSONDecodeError
 from typing import Literal
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from starlette import status
 from starlette.requests import Request
-from starlette.responses import HTMLResponse
+from starlette.responses import HTMLResponse, Response
 from starlette.staticfiles import StaticFiles
+from starlette.status import HTTP_204_NO_CONTENT
 from starlette.templating import Jinja2Templates
+from zonis import BaseZonisException, Packet
+from zonis.server import Server
 
 from garven import tags
-from garven.core import ConnectionManager, Operand
-from garven.schema import Message
+from garven.schema import Message, ws
+from garven import routers
 
 nav_links: list[dict[Literal["name", "url"], str]] = [
     {"name": "Home", "url": "/"},
@@ -22,7 +25,6 @@ nav_links: list[dict[Literal["name", "url"], str]] = [
 
 app = FastAPI(
     title="Garven",
-    description="A websocket MITM for suggestions bot cluster IPC.",
     version="0.1.0",
     terms_of_service="https://suggestions.gg/terms",
     contact={
@@ -31,14 +33,17 @@ app = FastAPI(
     },
     responses={403: {"model": Message}},
     openapi_tags=tags.tags_metadata,
+    description="Messages are sorted in order based on ID, "
+    "that is a message with an ID of 5 is newer then a message with an ID of 4.\n\n"
+    "Message ID's are generated globally and not per conversation.\n\n"
+    "**Global Rate-limit**\n\nAll requests are rate-limited globally by client IP and "
+    "are throttled to 25 requests every 10 seconds.\n\n\n",
 )
 log = logging.getLogger(__name__)
 templates = Jinja2Templates(directory="templates")
 app.mount("/static", StaticFiles(directory="static"), name="static")
-manager = ConnectionManager()
+app.zonis = Server(using_fastapi_websockets=True)
 
-# Delayed import for manager exporting to work
-from garven import routers
 
 app.include_router(routers.aggregate_router)
 
@@ -50,43 +55,39 @@ async def index(request: Request):
     )
 
 
-@app.websocket("/ws/cluster/{cluster_id}")
-async def websocket_endpoint(websocket: WebSocket, cluster_id: int):
+@app.get(
+    "/ws/{name}",
+    name="Entrypoint",
+    description="Establish a websocket connection to this URL."
+    "\n\n*This route describes data that can be returned via the websocket and is not an existing API route.*\n\n"
+    "**WS Error Codes**\n\nThese can be served as the disconnect code or WS payload response.\n"
+    """
+| Code | Location    | Description | 
+|------|-------------|-------------|
+| 4001 | WS Response | Your WS payload was not valid JSON | 
+| 4100 | Close Code  | Invalid secret key |
+| 4101 | Close Code  | You failed to identify correctly |
+| 4102 | Close Code  | You attempted to override an existing connection without valid override authorization |
+""",
+    tags=["Websocket"],
+    status_code=101,
+)
+async def websocket_documentation(data: ws.IdentifyPacket):
+    return Response(status_code=HTTP_204_NO_CONTENT)
+
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    d: str = await websocket.receive_text()
     try:
-        await websocket.accept()
+        data: Packet = json.loads(d)
+        identifier = await app.zonis.parse_identify(data, websocket)
+    except (BaseZonisException, JSONDecodeError):
+        await websocket.close(code=4101, reason="Identify failed")
+        return
 
-        try:
-            connection_state: bytes = await websocket.receive_bytes()
-        except KeyError:
-            # Invalid connection
-            return
-        connection_state: dict = manager.convert_from_bytes(connection_state)
-        api_key = connection_state.get("X-API-KEY")
-        if not api_key or api_key != os.environ["X-API-KEY"]:
-            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
-            return
-
-        # if cluster_id in manager.active_connections:
-        #     await websocket.close(
-        #         code=status.WS_1008_POLICY_VIOLATION,
-        #         reason=Operand.duplicate_connection(cluster_id).serialize(),
-        #     )
-        #     log.info("Rejected duplicate connection for cluster %s", cluster_id)
-        #     return
-
-        await manager.register(cluster_id, websocket)
-        await manager.broadcast(
-            Operand.send_message(f"Cluster {cluster_id} has joined").serialize()
-        )
-        try:
-            while True:
-                await asyncio.sleep(0.5)
-        except WebSocketDisconnect as e:
-            manager.disconnect(cluster_id)
-            await manager.broadcast(
-                Operand.send_message(f"Cluster {cluster_id} left the chat").serialize()
-            )
-            raise e
-    except Exception as e:
-        manager.disconnect(cluster_id)
-        raise e
+    try:
+        await asyncio.Future()
+    except WebSocketDisconnect:
+        app.zonis.disconnect(identifier)
