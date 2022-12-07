@@ -17,6 +17,12 @@ from garven import tags
 from garven.schema import Message, ws
 from garven import routers
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(levelname)-8s | %(asctime)s | %(message)s",
+    datefmt="%d/%m/%Y %I:%M:%S %p",
+)
+
 nav_links: list[dict[Literal["name", "url"], str]] = [
     {"name": "Home", "url": "/"},
     {"name": "Docs", "url": "/docs"},
@@ -46,6 +52,8 @@ app.zonis = Server(using_fastapi_websockets=True)
 
 
 app.include_router(routers.aggregate_router)
+# Get real IP
+# request.headers.get("X-Forwarded-For", 1)
 
 
 @app.get("/", response_class=HTMLResponse, tags=["General"])

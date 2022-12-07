@@ -5,9 +5,12 @@ COPY ./requirements.txt /code/requirements.txt
 
 RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 
+COPY ./entrypoint.sh /code/entrypoint.sh
 COPY ./garven /code/garven
 COPY ./static /code/static
 COPY ./templates /code/templates
 COPY ./main.py /code/main.py
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+RUN chmod +x /code/entrypoint.sh
+ENTRYPOINT ["/code/entrypoint.sh"]
+
