@@ -25,7 +25,7 @@ nav_links: list[dict[Literal["name", "url"], str]] = [
 
 app = FastAPI(
     title="Garven",
-    version="0.1.0",
+    version="0.2.0",
     terms_of_service="https://suggestions.gg/terms",
     contact={
         "name": "Suggestions Bot",
@@ -56,7 +56,7 @@ async def index(request: Request):
 
 
 @app.get(
-    "/ws/{name}",
+    "/ws",
     name="Entrypoint",
     description="Establish a websocket connection to this URL."
     "\n\n*This route describes data that can be returned via the websocket and is not an existing API route.*\n\n"
