@@ -1,12 +1,14 @@
 import asyncio
 import json
 import logging
+import os
 from json import JSONDecodeError
 from typing import Literal
 
+from cooldowns import CallableOnCooldown, Cooldown, CooldownBucket
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from starlette.requests import Request
-from starlette.responses import HTMLResponse, Response
+from starlette.responses import HTMLResponse, Response, JSONResponse
 from starlette.staticfiles import StaticFiles
 from starlette.status import HTTP_204_NO_CONTENT
 from starlette.templating import Jinja2Templates
@@ -14,7 +16,7 @@ from zonis import BaseZonisException, Packet
 from zonis.server import Server
 
 from garven import tags
-from garven.schema import Message, ws
+from garven.schema import Message, ws, RateLimited
 from garven import routers
 
 logging.basicConfig(
@@ -37,23 +39,60 @@ app = FastAPI(
         "name": "Suggestions Bot",
         "url": "https://suggestions.gg/contact",
     },
-    responses={403: {"model": Message}},
+    responses={
+        403: {"model": Message},
+        429: {
+            "model": RateLimited,
+            "description": "You are currently being rate-limited.",
+        },
+    },
     openapi_tags=tags.tags_metadata,
     description="Messages are sorted in order based on ID, "
     "that is a message with an ID of 5 is newer then a message with an ID of 4.\n\n"
     "Message ID's are generated globally and not per conversation.\n\n"
-    "**Global Rate-limit**\n\nAll requests are rate-limited globally by client IP and "
-    "are throttled to 25 requests every 10 seconds.\n\n\n",
+    "**Global Rate-limit**\n\nAll non-authenticated requests are rate-limited globally "
+    "by client IP and are throttled to 25 requests every 10 seconds.\n\n\n",
 )
 log = logging.getLogger(__name__)
 templates = Jinja2Templates(directory="templates")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 app.zonis = Server(using_fastapi_websockets=True)
-
-
 app.include_router(routers.aggregate_router)
-# Get real IP
-# request.headers.get("X-Forwarded-For", 1)
+global_ratelimit = Cooldown(25, 10, CooldownBucket.args)
+
+
+@app.exception_handler(CallableOnCooldown)
+async def route_on_cooldown(request: Request, exc: CallableOnCooldown):
+    return JSONResponse(
+        status_code=429,
+        content={
+            "retry_after": exc.retry_after,
+            "resets_at": exc.resets_at.isoformat(),
+        },
+    )
+
+
+@app.middleware("http")
+async def ratelimit_routes(request: Request, call_next):
+    """Ensures all routes come under the global ratelimit"""
+    x_api_key = request.headers.get("X-API-KEY")
+    x_forwarded_for = request.headers.get("X-Forwarded-For", 1)
+    try:
+        if x_api_key and x_api_key == os.environ["X-API-KEY"]:
+            response = await call_next(request)
+        else:
+            async with global_ratelimit(x_forwarded_for):
+                response = await call_next(request)
+    except CallableOnCooldown as exc:
+        return JSONResponse(
+            status_code=429,
+            content={
+                "retry_after": exc.retry_after,
+                "resets_at": exc.resets_at.isoformat(),
+            },
+        )
+
+    return response
 
 
 @app.get("/", response_class=HTMLResponse, tags=["General"])
