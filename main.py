@@ -62,6 +62,7 @@ app.zonis = Server(
     override_key=os.environ["OVERRIDE_KEY"],
 )
 app.include_router(routers.aggregate_router)
+app.include_router(routers.cluster_router)
 global_ratelimit = Cooldown(25, 10, CooldownBucket.args)
 
 
