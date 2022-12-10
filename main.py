@@ -56,7 +56,11 @@ app = FastAPI(
 log = logging.getLogger(__name__)
 templates = Jinja2Templates(directory="templates")
 app.mount("/static", StaticFiles(directory="static"), name="static")
-app.zonis = Server(using_fastapi_websockets=True)
+app.zonis = Server(
+    using_fastapi_websockets=True,
+    secret_key=os.environ["SECRET_KEY"],
+    override_key=os.environ["OVERRIDE_KEY"],
+)
 app.include_router(routers.aggregate_router)
 global_ratelimit = Cooldown(25, 10, CooldownBucket.args)
 
@@ -130,7 +134,7 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         data: Packet = json.loads(d)
         identifier = await app.zonis.parse_identify(data, websocket)
-    except (JSONDecodeError):
+    except JSONDecodeError:
         await websocket.close(code=4101, reason="Identify failed")
         return
     except BaseZonisException:
