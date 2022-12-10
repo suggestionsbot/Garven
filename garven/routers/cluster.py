@@ -28,8 +28,8 @@ async def cluster_status(request: Request):
     d = await z.request_all("cluster_status")
 
     if len(d.values()) != int(os.environ.get("CLUSTER_COUNT", 6)):
-        d["partial_response"] = True
+        partial_response = True
     else:
-        d["partial_response"] = False
+        partial_response = False
 
-    return d
+    return ClusterHealth(clusters=d, partial_response=partial_response)
