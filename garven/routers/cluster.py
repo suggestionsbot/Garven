@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends
@@ -25,4 +26,10 @@ cluster_router = APIRouter(
 async def cluster_status(request: Request):
     z: Server = request.app.zonis
     d = await z.request_all("cluster_status")
-    return ClusterHealth(clusters=d)  # noqa
+
+    if len(d.values()) != int(os.environ.get("CLUSTER_COUNT", 6)):
+        d["partial_response"] = True
+    else:
+        d["partial_response"] = False
+
+    return d
