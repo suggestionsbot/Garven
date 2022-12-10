@@ -29,7 +29,7 @@ async def cluster_status(request: Request):
     partial_response = False
     z: Server = request.app.zonis
     d = await z.request_all("cluster_status")
-    for k, item in deepcopy(d.items()):
+    for k, item in deepcopy(d).items():
         if isinstance(item, RequestFailed):
             partial_response = True
             log.error("/cluster/status WS threw '%s'", item.response_data)
