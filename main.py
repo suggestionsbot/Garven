@@ -130,8 +130,10 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         data: Packet = json.loads(d)
         identifier = await app.zonis.parse_identify(data, websocket)
-    except (BaseZonisException, JSONDecodeError):
+    except (JSONDecodeError):
         await websocket.close(code=4101, reason="Identify failed")
+        return
+    except BaseZonisException:
         return
 
     try:
