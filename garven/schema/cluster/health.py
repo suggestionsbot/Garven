@@ -28,15 +28,21 @@ class ClusterHealth(BaseModel):
     class Config:
         schema_extra = {
             "example": {
-                "1": {
-                    "cluster_is_up": True,
-                    "1": {"latency": 3.67, "is_currently_up": True},
-                    "2": {"latency": 4.23, "is_currently_up": True},
-                },
-                "2": {
-                    "cluster_is_up": True,
-                    "3": {"latency": 12.6, "is_currently_up": True},
-                    "4": {"latency": 7.32, "is_currently_up": False},
+                "clusters": {
+                    "1": {
+                        "cluster_is_up": True,
+                        "shards": {
+                            "1": {"latency": 3.67, "is_currently_up": True},
+                            "2": {"latency": 4.23, "is_currently_up": True},
+                        },
+                    },
+                    "2": {
+                        "cluster_is_up": True,
+                        "shards": {
+                            "3": {"latency": 12.6, "is_currently_up": True},
+                            "4": {"latency": 7.32, "is_currently_up": False},
+                        },
+                    },
                 },
                 "partial_response": False,
             }
