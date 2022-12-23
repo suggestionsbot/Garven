@@ -48,7 +48,7 @@ async def cluster_status(request: Request):
 @cluster_router.post(
     "/notify_devs", status_code=204, responses={503: {"model": Message}}
 )
-async def cluster_status(request: Request, data: DevShare):
+async def notify_devs(request: Request, data: DevShare):
     try:
         z: Server = request.app.zonis
         await z.request(
