@@ -5,7 +5,9 @@ from pydantic import BaseModel, Field
 
 class ShardInfo(BaseModel):
     is_currently_up: bool
-    latency: Optional[float]
+    latency: Optional[float] = Field(
+        description="The shard latency, or None if the latency is currently undefined."
+    )
 
 
 class ClusterInfo(BaseModel):
