@@ -52,5 +52,6 @@ async def cluster_status(request: Request, data: DevShare):
         client_identifier="2",
         title=data.title,
         description=data.description,
+        sender=data.sender,
     )
     return Response(status_code=HTTP_204_NO_CONTENT)
