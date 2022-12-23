@@ -7,10 +7,12 @@ from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends
 from fastapi import Request
+from starlette.responses import Response
+from starlette.status import HTTP_204_NO_CONTENT
 from zonis import RequestFailed
 
 from garven.dependencies import get_auth_header
-from garven.schema.cluster import ClusterHealth
+from garven.schema.cluster import ClusterHealth, DevShare
 
 if TYPE_CHECKING:
     from zonis.server import Server
@@ -40,3 +42,15 @@ async def cluster_status(request: Request):
         partial_response = True
 
     return ClusterHealth(clusters=d, partial_response=partial_response)
+
+
+@cluster_router.post("/notify_devs", status_code=204)
+async def cluster_status(request: Request, data: DevShare):
+    z: Server = request.app.zonis
+    await z.request(
+        "share_with_devs",
+        client_identifier="2",
+        title=data.title,
+        description=data.description,
+    )
+    return Response(status_code=HTTP_204_NO_CONTENT)
