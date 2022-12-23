@@ -1,9 +1,11 @@
+from typing import Optional
+
 from pydantic import BaseModel, Field
 
 
 class ShardInfo(BaseModel):
-    latency: float
     is_currently_up: bool
+    latency: Optional[float]
 
 
 class ClusterInfo(BaseModel):
