@@ -33,7 +33,7 @@ nav_links: list[dict[Literal["name", "url"], str]] = [
 
 app = FastAPI(
     title="Garven",
-    version="0.2.0",
+    version="0.3.0",
     terms_of_service="https://suggestions.gg/terms",
     contact={
         "name": "Suggestions Bot",
