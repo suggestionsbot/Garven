@@ -11,6 +11,7 @@ from zonis import RequestFailed
 
 from garven.dependencies import get_auth_header
 from garven.schema import Message
+from garven.schema.premium import SharedGuildsRequest, SharedGuildsResponse
 
 if TYPE_CHECKING:
     from zonis.server import Server
@@ -42,3 +43,28 @@ async def refresh_premium(request: Request, user_id: int):
             )
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@premium_router.get(
+    "/{user_id}/guilds/shared",
+    description="Fetch guilds that the user shares with the bot.",
+    response_model=SharedGuildsResponse,
+)
+async def fetch_shared_guilds(
+    request: Request, data: SharedGuildsRequest, user_id: int
+):
+    z: Server = request.app.zonis
+    d: dict[str, list[int]] = await z.request_all(
+        "shared_guilds", user_id=user_id, guild_ids=data.guild_ids
+    )
+    data = SharedGuildsResponse(shared_guilds=[])
+    for k, item in d.items():
+        if isinstance(item, RequestFailed):
+            data.partial_response = True
+            log.error("/{user_id}/guilds/shared WS threw '%s'", item.response_data)
+            d.pop(k)
+            continue
+
+        data.shared_guilds.append(*item)
+
+    return data
