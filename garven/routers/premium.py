@@ -55,7 +55,7 @@ async def fetch_shared_guilds(
 ):
     z: Server = request.app.zonis
     d: dict[str, list[int]] = await z.request_all(
-        "shared_guilds", user_id=user_id, guild_ids=data.guild_ids
+        "shared_guilds", guild_ids=data.guild_ids
     )
     data = SharedGuildsResponse(shared_guilds=[])
     for k, item in d.items():
@@ -65,6 +65,7 @@ async def fetch_shared_guilds(
             d.pop(k)
             continue
 
-        data.shared_guilds.append(*item)
+        if item:
+            data.shared_guilds.extend(item)
 
     return data
