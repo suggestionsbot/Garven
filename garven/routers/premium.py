@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from fastapi import Request
 from starlette import status
 from starlette.responses import Response, JSONResponse
@@ -49,14 +49,21 @@ async def refresh_premium(request: Request, user_id: int):
     "/{user_id}/guilds/shared",
     description="Fetch guilds that the user shares with the bot.",
     response_model=SharedGuildsResponse,
+    responses={400: {"model": Message}},
 )
 async def fetch_shared_guilds(
-    request: Request, data: SharedGuildsRequest, user_id: int
+    request: Request,
+    user_id: int,
+    guild_ids: str = Query(description="Comma seperated list of guild ids."),
 ):
+    try:
+        guild_ids = guild_ids.split(",")
+        guild_ids = list(map(int, guild_ids))
+    except:
+        return Response(Message(message="Invalid guild_ids param"), status_code=400)
+
     z: Server = request.app.zonis
-    d: dict[str, list[int]] = await z.request_all(
-        "shared_guilds", guild_ids=data.guild_ids
-    )
+    d: dict[str, list[int]] = await z.request_all("shared_guilds", guild_ids=guild_ids)
     data = SharedGuildsResponse(shared_guilds=[])
     for k, item in d.items():
         if isinstance(item, RequestFailed):
