@@ -2,9 +2,11 @@ import asyncio
 import json
 import logging
 import os
+from contextlib import asynccontextmanager
 from json import JSONDecodeError
 from typing import Literal
 
+import httpx
 from cooldowns import CallableOnCooldown, Cooldown, CooldownBucket
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from starlette.requests import Request
@@ -31,6 +33,15 @@ nav_links: list[dict[Literal["name", "url"], str]] = [
     {"name": "Redoc", "url": "/redoc"},
 ]
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    headers = {}  # TODO Add auth here
+    async with httpx.AsyncClient(headers=headers) as ac:
+        app.ac = ac
+        yield
+
+
 app = FastAPI(
     title="Garven",
     version="0.3.2",
@@ -52,8 +63,11 @@ app = FastAPI(
     "Message ID's are generated globally and not per conversation.\n\n"
     "**Global Rate-limit**\n\nAll non-authenticated requests are rate-limited globally "
     "by client IP and are throttled to 25 requests every 10 seconds.\n\n\n",
+    lifespan=lifespan,
 )
 log = logging.getLogger(__name__)
+
+
 templates = Jinja2Templates(directory="templates")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 app.zonis = Server(
@@ -64,6 +78,9 @@ app.zonis = Server(
 app.include_router(routers.aggregate_router)
 app.include_router(routers.cluster_router)
 app.include_router(routers.premium_router)
+app.include_router(routers.suggestion_router)
+
+
 global_ratelimit = Cooldown(25, 10, CooldownBucket.args)
 
 
