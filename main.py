@@ -7,8 +7,10 @@ from json import JSONDecodeError
 from typing import Literal
 
 import httpx
+from alaric import Document
 from cooldowns import CallableOnCooldown, Cooldown, CooldownBucket
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from motor.motor_asyncio import AsyncIOMotorClient
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, Response, JSONResponse
 from starlette.staticfiles import StaticFiles
@@ -18,6 +20,7 @@ from zonis import BaseZonisException, Packet
 from zonis.server import Server
 
 from garven import tags
+from garven.objects import Suggestion
 from garven.schema import Message, ws, RateLimited
 from garven import routers
 
@@ -36,7 +39,10 @@ nav_links: list[dict[Literal["name", "url"], str]] = [
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    headers = {}  # TODO Add auth here
+    headers = {"Authorization": f"Bot {os.environ['TOKEN']}"}  # TODO Add auth here
+    client = AsyncIOMotorClient(os.environ["MONGO_URL"])
+    db = client["suggestions-rewrite"]
+    app.suggestions_document = Document(db, "suggestions", converter=Suggestion)
     async with httpx.AsyncClient(headers=headers) as ac:
         app.ac = ac
         yield
