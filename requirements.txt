@@ -19,6 +19,3 @@ uvloop==0.16.0
 watchfiles==0.16.1
 websockets==10.4
 zonis==1.2.6
-alaric==1.3.3
-disnake
-httpx==0.24.0

@@ -20,7 +20,6 @@ from zonis import BaseZonisException, Packet
 from zonis.server import Server
 
 from garven import tags
-from garven.objects import Suggestion
 from garven.schema import Message, ws, RateLimited
 from garven import routers
 
@@ -35,17 +34,6 @@ nav_links: list[dict[Literal["name", "url"], str]] = [
     {"name": "Docs", "url": "/docs"},
     {"name": "Redoc", "url": "/redoc"},
 ]
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    headers = {"Authorization": f"Bot {os.environ['TOKEN']}"}  # TODO Add auth here
-    client = AsyncIOMotorClient(os.environ["MONGO_URL"])
-    db = client["suggestions-rewrite"]
-    app.suggestions_document = Document(db, "suggestions", converter=Suggestion)
-    async with httpx.AsyncClient(headers=headers) as ac:
-        app.ac = ac
-        yield
 
 
 app = FastAPI(
@@ -69,7 +57,6 @@ app = FastAPI(
     "Message ID's are generated globally and not per conversation.\n\n"
     "**Global Rate-limit**\n\nAll non-authenticated requests are rate-limited globally "
     "by client IP and are throttled to 25 requests every 10 seconds.\n\n\n",
-    lifespan=lifespan,
 )
 log = logging.getLogger(__name__)
 
@@ -84,7 +71,6 @@ app.zonis = Server(
 app.include_router(routers.aggregate_router)
 app.include_router(routers.cluster_router)
 app.include_router(routers.premium_router)
-app.include_router(routers.suggestion_router)
 
 
 global_ratelimit = Cooldown(25, 10, CooldownBucket.args)
