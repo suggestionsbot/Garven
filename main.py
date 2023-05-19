@@ -2,15 +2,11 @@ import asyncio
 import json
 import logging
 import os
-from contextlib import asynccontextmanager
 from json import JSONDecodeError
 from typing import Literal
 
-import httpx
-from alaric import Document
 from cooldowns import CallableOnCooldown, Cooldown, CooldownBucket
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from motor.motor_asyncio import AsyncIOMotorClient
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, Response, JSONResponse
 from starlette.staticfiles import StaticFiles
