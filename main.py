@@ -66,7 +66,6 @@ app.zonis = Server(
 )
 app.include_router(routers.aggregate_router)
 app.include_router(routers.cluster_router)
-app.include_router(routers.premium_router)
 
 
 global_ratelimit = Cooldown(25, 10, CooldownBucket.args)
