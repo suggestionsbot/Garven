@@ -39,7 +39,7 @@ async def cluster_status(request: Request):
             d.pop(k)
             continue
 
-    if len(d.values()) != int(os.environ.get("CLUSTER_COUNT", 6)):
+    if len(d.values()) != int(os.environ.get("CLUSTER_COUNT", 11)):
         partial_response = True
 
     return ClusterHealth(clusters=d, partial_response=partial_response)
@@ -53,7 +53,7 @@ async def notify_devs(request: Request, data: DevShare):
         z: Server = request.app.zonis
         await z.request(
             "share_with_devs",
-            client_identifier="2",
+            client_identifier=os.environ.get("DEV_CLUSTER", "2"),
             title=data.title,
             description=data.description,
             sender=data.sender,

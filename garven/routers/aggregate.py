@@ -37,7 +37,7 @@ async def guild_count(request: Request):
 
         statistic.statistic += item
 
-    cluster_count = int(os.environ.get("CLUSTER_COUNT", 6))
+    cluster_count = int(os.environ.get("CLUSTER_COUNT", 11))
     if len(data.keys()) != cluster_count:
         statistic.partial_response = True
         log.error(
