@@ -11,6 +11,7 @@ from starlette.responses import Response, JSONResponse
 from starlette.status import HTTP_204_NO_CONTENT
 from zonis import RequestFailed, UnknownClient
 
+from garven.calculate_dev_cluster import get_dev_cluster
 from garven.dependencies import get_auth_header
 from garven.schema import Message
 from garven.schema.cluster import ClusterHealth, DevShare
@@ -53,7 +54,7 @@ async def notify_devs(request: Request, data: DevShare):
         z: Server = request.app.zonis
         await z.request(
             "share_with_devs",
-            client_identifier=os.environ.get("DEV_CLUSTER", "2"),
+            client_identifier=get_dev_cluster(),
             title=data.title,
             description=data.description,
             sender=data.sender,
