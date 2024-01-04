@@ -9,7 +9,7 @@ from fastapi import Request
 from zonis import RequestFailed
 
 from garven.dependencies import get_auth_header
-from garven.schema import Statistic
+from garven.schema import Statistic, CachedItemsStatistic
 
 if TYPE_CHECKING:
     from zonis.server import Server
@@ -42,6 +42,37 @@ async def guild_count(request: Request):
         statistic.partial_response = True
         log.error(
             "/guilds/count did not get a response from all %s clusters", cluster_count
+        )
+
+    return statistic
+
+
+@aggregate_router.get(
+    "/cached/count", description="Fetch the counts of cached items in each cluster."
+)
+async def cached_item_counter(request: Request):
+    z: Server = request.app.zonis
+    partial_response = False
+    data: dict[str, dict[str, int]] = await z.request_all("cached_item_count")
+    totals: dict[str, int] = {k: 0 for k in data.keys()}
+
+    for key, value in data.items():
+        if isinstance(value, RequestFailed):
+            partial_response = True
+            log.error("/cached/count WS threw '%s'", value.response_data)
+            continue
+
+        totals[key] += value
+
+    statistic = CachedItemsStatistic(
+        per_cluster=data, partial_response=partial_response, total_counts=totals
+    )
+
+    cluster_count = int(os.environ["CLUSTER_COUNT"])
+    if len(data.keys()) != cluster_count:
+        statistic.partial_response = True
+        log.error(
+            "/cached/count did not get a response from all %s clusters", cluster_count
         )
 
     return statistic
