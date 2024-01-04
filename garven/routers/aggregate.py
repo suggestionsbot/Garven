@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+from collections import defaultdict
 from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends
@@ -55,16 +56,20 @@ async def guild_count(request: Request):
 async def cached_item_counter(request: Request):
     z: Server = request.app.zonis
     partial_response = False
-    data: dict[str, dict[str, int]] = await z.request_all("cached_item_count")
-    totals: dict[str, int] = {k: 0 for k in data.keys()}
+    raw_data: dict[str, dict[str, int]] = await z.request_all("cached_item_count")
+    totals: dict[str, int] = defaultdict(lambda: 0)
+    data: dict[str, dict[str, int]] = {}
 
-    for key, value in data.items():
-        if isinstance(value, RequestFailed):
+    for cluster, item in raw_data.items():
+        if isinstance(item, RequestFailed):
             partial_response = True
-            log.error("/cached/count WS threw '%s'", value.response_data)
+            log.error("/cached/count WS threw '%s'", item.response_data)
             continue
 
-        totals[key] += value
+        data[cluster] = item
+
+        for key, value in item.items():
+            totals[key] += value
 
     statistic = CachedItemsStatistic(
         per_cluster=data, partial_response=partial_response, total_counts=totals
