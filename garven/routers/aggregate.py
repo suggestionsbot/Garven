@@ -48,8 +48,10 @@ async def guild_count(request: Request):
 
 
 @aggregate_router.get(
-    "/cached/count", description="Fetch the counts of cached items in each cluster."
-,responses={200: {"model": CachedItemsStatistic}},)
+    "/cached/count",
+    description="Fetch the counts of cached items in each cluster.",
+    responses={200: {"model": CachedItemsStatistic}},
+)
 async def cached_item_counter(request: Request):
     z: Server = request.app.zonis
     partial_response = False
