@@ -10,6 +10,23 @@ class ShardInfo(BaseModel):
     )
 
 
+class ClusterWSInfo(BaseModel):
+    partial_response: bool = Field(
+        False,
+        description="This will be true when the returned statistic "
+        "does not accurately represent the entire expected dataset.",
+    )
+    shards: dict[str, dict[str, str]] = Field(
+        description="A mapping of shard id's to self reported latencies"
+    )
+
+    class Config:
+        schema_extra = {
+            "partial_response": True,
+            "shards": {"1": {"ws": "1.1", "keepalive": "15.5"}},
+        }
+
+
 class ClusterInfo(BaseModel):
     cluster_is_up: bool = Field(
         description="Ignoring individual shards, is the cluster as a whole functional"

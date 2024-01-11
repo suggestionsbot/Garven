@@ -14,7 +14,7 @@ from zonis import RequestFailed, UnknownClient
 from garven.calculate_dev_cluster import get_dev_cluster
 from garven.dependencies import get_auth_header
 from garven.schema import Message
-from garven.schema.cluster import ClusterHealth, DevShare
+from garven.schema.cluster import ClusterHealth, DevShare, ClusterWSInfo
 
 if TYPE_CHECKING:
     from zonis.server import Server
@@ -44,6 +44,27 @@ async def cluster_status(request: Request):
         partial_response = True
 
     return ClusterHealth(clusters=d, partial_response=partial_response)
+
+
+@cluster_router.get("/latency/ws", response_model=ClusterWSInfo)
+async def cluster_status(request: Request):
+    partial_response = False
+    z: Server = request.app.zonis
+    d: dict[str, dict[str, str]] = await z.request_all("cluster_ws_status")
+    shard_data = {}
+    for _, item in deepcopy(d).items():
+        if isinstance(item, RequestFailed):
+            partial_response = True
+            log.error("/cluster/status/ws WS threw '%s'", item.response_data)
+            continue
+
+        for shard_id, value in item.items():
+            shard_data[shard_id] = value
+
+    if len(shard_data.values()) != int(os.environ.get("TOTAL_SHARDS")):
+        partial_response = True
+
+    return ClusterWSInfo(shards=shard_data, partial_response=partial_response)  # noqa
 
 
 @cluster_router.post(
