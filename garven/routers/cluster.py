@@ -52,10 +52,15 @@ async def cluster_status(request: Request):
     z: Server = request.app.zonis
     d: dict[str, dict[str, str]] = await z.request_all("cluster_ws_status")
     shard_data = {}
-    for _, item in deepcopy(d).items():
+    for c, item in deepcopy(d).items():
         if isinstance(item, RequestFailed):
             partial_response = True
-            log.error("/cluster/status/ws WS threw '%s'", item.response_data)
+            log.error("/cluster/latency/ws WS threw '%s'", item.response_data)
+            continue
+
+        if item is None:
+            partial_response = True
+            log.error("/cluster/latency/ws had a null value from %s", c)
             continue
 
         for shard_id, value in item.items():

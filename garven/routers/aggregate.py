@@ -54,6 +54,13 @@ async def guild_count(request: Request):
             log.error("/guilds/count WS threw '%s'", item.response_data)
             continue
 
+        if item is None:
+            statistic.partial_response = True
+            log.error(
+                "/guilds/count gave a null item",
+            )
+            continue
+
         statistic.statistic += item
 
     cluster_count = int(os.environ.get("CLUSTER_COUNT", 11))
